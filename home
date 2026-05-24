@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arsenal F.C. | The Perfect Handover Timeline</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;800&family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Three.js Engine Layer -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-dark: #04080e;
+            --holo-glow: #00f0ff;
+            --holo-dim: rgba(0, 240, 255, 0.15);
+            --arsenal-red: #ef0107;
+            --mancity-blue: #6cabdd;
+            --gold: #ffdf00;
+            --text-light: #ffffff;
+            --font-display: 'Orbitron', sans-serif;
+            --font-body: 'Space Grotesk', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            font-family: var(--font-body);
+            min-height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #webgl-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        #matrix-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        /* --- UI OVERLAY FRAMEWORK --- */
+        .ui-wrapper {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 1300px;
+            padding: 2rem;
+            pointer-events: none;
+        }
+
+        .holo-panel {
+            background: rgba(6, 11, 17, 0.8);
+            border: 1px solid var(--holo-dim);
+            padding: 1.5rem;
+            width: 290px;
+            backdrop-filter: blur(12px);
+            pointer-events: auto;
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.05);
+            transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        .panel-title {
+            font-family: var(--font-display);
+            font-size: 0.85rem;
+            letter-spacing: 2px;
+            color: var(--holo-glow);
+            text-transform: uppercase;
+            margin-bottom: 1.2rem;
+            border-bottom: 1px solid var(--holo-dim);
+            padding-bottom: 0.5rem;
+        }
+
+        .menu-item {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(0, 240, 255, 0.1);
+            padding: 0.8rem 1rem;
+            margin-bottom: 0.8rem;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .action-btn {
+            width: 100%;
+            background: transparent;
+            border: 2px solid var(--arsenal-red);
+            color: var(--text-light);
+            padding: 1.2rem;
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            font-weight: 800;
+            cursor: pointer;
+            letter-spacing: 3px;
+            box-shadow: 0 0 15px rgba(239, 1, 7, 0.3);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        .action-btn:hover {
+            background: var(--arsenal-red);
+            box-shadow: 0 0 30px var(--arsenal-red);
+            transform: scale(1.05);
+        }
+
+        #system-alert {
+            position: absolute;
+            top: 12%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: var(--font-display);
+            color: var(--arsenal-red);
+            font-size: clamp(1.8rem, 4vw, 3.5rem);
+            font-weight: 900;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            z-index: 100;
+            text-shadow: 0 0 20px var(--arsenal-red);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease, color 0.4s ease;
+            text-align: center;
+            width: 100%;
+        }
+
+        /* --- THE DYNAMIC CENTER LOGO PORTAL --- */
+        #center-logo-stage {
+            position: absolute;
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            z-index: 15;
+            pointer-events: none;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+            opacity: 0;
+        }
+
+        #center-logo-stage img {
+            width: 240px;
+            height: auto;
+        }
+
+        /* --- MANCHESTER CITY DELIVERY CARRIER (UPGRADED TO LEFT ENTRANCE) --- */
+        #mancity-carrier {
+            position: absolute;
+            top: 40%;
+            left: -300px; /* Hidden offscreen left */
+            transform: translateY(-50%);
+            z-index: 12;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            transition: all 1.2s cubic-bezier(0.25, 1, 0.5, 1);
+            pointer-events: none;
+            opacity: 0;
+        }
+
+        #mancity-carrier img {
+            width: 90px;
+            height: auto;
+            filter: drop-shadow(0 0 15px var(--mancity-blue));
+        }
+
+        .carrier-text {
+            color: var(--mancity-blue);
+            font-family: var(--font-display);
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            font-weight: bold;
+            background: rgba(6, 11, 17, 0.8);
+            padding: 8px 12px;
+            border-left: 3px solid var(--mancity-blue);
+        }
+
+        /* --- CONFETTI SPARKS --- */
+        .sparkle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 14;
+            animation: explode 1.5s ease-out forwards;
+        }
+
+        @keyframes explode {
+            0% { transform: translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(var(--x), var(--y)) scale(0); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="webgl-canvas"></canvas>
+    <canvas id="matrix-canvas"></canvas>
+
+    <div id="system-alert">LONDON IS RED</div>
+
+    <!-- DYNAMIC CENTRAL LOGO PORTAL -->
+    <div id="center-logo-stage">
+        <img id="logo-target" src="" alt="Club Logo">
+    </div>
+
+    <!-- MANCHESTER CITY LEFT-SIDE DELIVERY HANDOVER SYSTEM -->
+    <div id="mancity-carrier">
+        <img src="https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg" alt="Man City Logo">
+        <div class="carrier-text">DELIVERING TROPHY TO<br>THE CHAMPIONS...</div>
+    </div>
+
+    <div class="ui-wrapper">
+        <div class="holo-panel" id="left-panel">
+            <h4 class="panel-title">System Telemetry</h4>
+            <div class="menu-item">DOMINANCE: <span>100%</span></div>
+            <div class="menu-item">HANDOVER: <span>TIMED</span></div>
+            <div class="menu-item">LOCATION: <span>NORTH LONDON</span></div>
+        </div>
+
+        <div class="holo-panel" id="right-panel">
+            <h4 class="panel-title">Asset Manifest</h4>
+            <h3 style="font-family: var(--font-display); font-size: 1.1rem; margin-bottom: 0.5rem;">DIGITAL GUNNER #12</h3>
+            <p style="font-size: 0.75rem; color: var(--holo-glow); margin-bottom: 1.5rem; font-family: var(--font-display);">SERIAL: A034789</p>
+            
+            <button class="action-btn" onclick="triggerCinematicSequence()">CLICK HERE</button>
+        </div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, collectibleMesh, trophyGroup;
+        let isCinematicActive = false;
+        
+        const matrixCanvas = document.getElementById('matrix-canvas');
+        const mCtx = matrixCanvas.getContext('2d');
+        
+        const rivalLogos = [
+            "https://upload.wikimedia.org/wikipedia/en/7/7c/Chelsea_FC_logo_v3.svg",
+            "https://upload.wikimedia.org/wikipedia/en/b/b4/Tottenham_Hotspur.svg",
+            "https://upload.wikimedia.org/wikipedia/en/7/7a/Manchester_United_FC_crest.svg",
+            "https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg"
+        ];
+
+        const arsenalLogo = "https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg";
+        const arsenalLegends = ["HENRY", "BERGKAMP", "WRIGHT", "ADAMS", "SAKA", "ODEGAARD", "COYG", "GUNNERS"];
+
+        function init3D() {
+            const canvas = document.getElementById('webgl-canvas');
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x04080e, 0.015);
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 8);
+
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+
+            const keyLight = new THREE.DirectionalLight(0xffffff, 1.5);
+            keyLight.position.set(5, 8, 5);
+            scene.add(keyLight);
+
+            // Load Custom Player Card Figure
+            const loader = new THREE.TextureLoader();
+            loader.load('watermarked_img_5211250124817663171.png', function(texture) {
+                const geometry = new THREE.PlaneGeometry(3.5, 4.5);
+                const material = new THREE.MeshPhongMaterial({ map: texture, transparent: true, side: THREE.DoubleSide });
+                collectibleMesh = new THREE.Mesh(geometry, material);
+                collectibleMesh.position.set(0, 0.3, 0);
+                scene.add(collectibleMesh);
+            });
+
+            /* --- TROPHY ENGINE MODEL BUILD --- */
+            trophyGroup = new THREE.Group();
+            const goldMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.9, roughness: 0.15 });
+            const silverMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.95, roughness: 0.1 });
+
+            const baseGeo = new THREE.CylinderGeometry(0.8, 0.9, 0.6, 16);
+            const base = new THREE.Mesh(baseGeo, new THREE.MeshStandardMaterial({ color: 0x221111 }));
+            base.position.y = -1.5;
+            trophyGroup.add(base);
+
+            const bodyGeo = new THREE.CylinderGeometry(0.6, 0.2, 1.6, 32);
+            const vaseBody = new THREE.Mesh(bodyGeo, goldMat);
+            vaseBody.position.y = -0.4;
+            trophyGroup.add(vaseBody);
+
+            const rimGeo = new THREE.CylinderGeometry(0.7, 0.6, 0.3, 32);
+            const rim = new THREE.Mesh(rimGeo, goldMat);
+            rim.position.y = 0.55;
+            trophyGroup.add(rim);
+
+            const crownGeo = new THREE.ConeGeometry(0.5, 0.6, 32);
+            const crown = new THREE.Mesh(crownGeo, goldMat);
+            crown.position.y = 1.0;
+            trophyGroup.add(crown);
+
+            const handleGeo = new THREE.TorusGeometry(0.4, 0.08, 12, 32, Math.PI * 1.4);
+            const leftHandle = new THREE.Mesh(handleGeo, goldMat);
+            leftHandle.position.set(-0.6, 0, 0); leftHandle.rotation.z = Math.PI / 3;
+            const rightHandle = leftHandle.clone();
+            rightHandle.position.set(0.6, 0, 0); rightHandle.rotation.z = -Math.PI / 3;
+            trophyGroup.add(leftHandle, rightHandle);
+
+            trophyGroup.scale.set(1.1, 1.1, 1.1);
+            
+            // Hidden off-stage to the far left to accompany Man City entrance path
+            trophyGroup.position.set(-6, 0.5, -1);
+            scene.add(trophyGroup);
+
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (collectibleMesh && !isCinematicActive) {
+                collectibleMesh.rotation.y = Math.sin(Date.now() * 0.0015) * 0.12;
+            }
+
+            if (isCinematicActive) {
+                if (collectibleMesh && collectibleMesh.position.z > -20) {
+                    collectibleMesh.rotation.y += 0.3;
+                    collectibleMesh.position.z -= 0.2;
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        /* --- MATRIX DATA STREAM ENGINE --- */
+        let columns; let drops = []; const fontSize = 16;
+        function initMatrixRain() {
+            matrixCanvas.width = window.innerWidth; matrixCanvas.height = window.innerHeight;
+            columns = Math.floor(matrixCanvas.width / (fontSize * 3));
+            for (let x = 0; x < columns; x++) drops[x] = 1;
+        }
+
+        function drawMatrixRain() {
+            mCtx.fillStyle = 'rgba(4, 8, 14, 0.07)'; mCtx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+            mCtx.font = "bold " + fontSize + "px 'Orbitron'";
+            for (let i = 0; i < drops.length; i++) {
+                const text = arsenalLegends[Math.floor(Math.random() * arsenalLegends.length)];
+                mCtx.fillStyle = Math.random() > 0.3 ? '#ef0107' : '#ffffff';
+                mCtx.fillText(text, i * fontSize * 3.5, drops[i] * fontSize);
+                if (drops[i] * fontSize > matrixCanvas.height && Math.random() > 0.975) drops[i] = 0;
+                drops[i]++;
+            }
+        }
+
+        /* --- ORDERED CINEMATIC CONTROLLER --- */
+        let matrixInterval;
+        function triggerCinematicSequence() {
+            if (isCinematicActive) return;
+            isCinematicActive = true;
+            
+            document.getElementById('system-alert').style.opacity = '1';
+            document.getElementById('left-panel').style.transform = 'translateX(-360px)';
+            document.getElementById('right-panel').style.transform = 'translateX(360px)';
+
+            // STAGE 1: Matrix Rain starts first and occupies the display
+            initMatrixRain();
+            document.getElementById('matrix-canvas').style.opacity = '1';
+            matrixInterval = setInterval(drawMatrixRain, 35);
+
+            // STAGE 2: Shut down matrix rain first, THEN initiate logos sequence directly after
+            setTimeout(() => {
+                clearInterval(matrixInterval);
+                document.getElementById('matrix-canvas').style.opacity = '0';
+                
+                // Trigger popups immediately after matrix clears out
+                executeRivalPopups();
+            }, 4500);
+        }
+
+        function executeRivalPopups() {
+            const stage = document.getElementById('center-logo-stage');
+            const targetImg = document.getElementById('logo-target');
+            let index = 0;
+
+            stage.style.opacity = "1";
+
+            let popupInterval = setInterval(() => {
+                if (index < rivalLogos.length) {
+                    stage.style.transform = "translate(-50%, -50%) scale(0)";
+                    setTimeout(() => {
+                        targetImg.src = rivalLogos[index];
+                        targetImg.style.filter = "grayscale(100%) opacity(0.4)";
+                        stage.style.transform = "translate(-50%, -50%) scale(1.2)";
+                        index++;
+                    }, 150);
+                } else {
+                    // STAGE 3: Final seconds flash massive supreme ARSENAL logo overriding rivals
+                    clearInterval(popupInterval);
+                    setTimeout(() => {
+                        stage.style.transform = "translate(-50%, -50%) scale(0)";
+                        setTimeout(() => {
+                            targetImg.src = arsenalLogo;
+                            targetImg.style.filter = "drop-shadow(0 0 40px var(--arsenal-red))";
+                            stage.style.transform = "translate(-50%, -50%) scale(1.6)";
+                            
+                            // Trigger Man City entering from LEFT next
+                            setTimeout(executeCityLeftHandover, 1500);
+                        }, 200);
+                    }, 500);
+                }
+            }, 800);
+        }
+
+        function executeCityLeftHandover() {
+            const carrier = document.getElementById('mancity-carrier');
+            const banner = document.getElementById('system-alert');
+            
+            // 1. Man city banner container enters from offscreen LEFT bounds to Center-Left position
+            carrier.style.opacity = "1";
+            carrier.style.left = "15%";
+
+            // 2. Animate Three.js trophy traveling horizontally from left coordinate node into dead center
+            let currentX = -6;
+            let slideInterval = setInterval(() => {
+                if (currentX < 0) {
+                    currentX += 0.12;
+                    trophyGroup.position.x = currentX;
+                    trophyGroup.rotation.y += 0.08;
+                } else {
+                    clearInterval(slideInterval);
+                    
+                    // 3. Handover complete. Man City retreats backward offscreen left in defeat
+                    setTimeout(() => {
+                        carrier.style.left = "-350px";
+                        carrier.style.opacity = "0";
+
+                        // Fire up championship state graphics!
+                        banner.innerText = "CHAMPIONS OF ENGLAND";
+                        banner.style.color = "var(--gold)";
+                        banner.style.textShadow = "0 0 35px var(--gold)";
+
+                        setInterval(() => { trophyGroup.rotation.y += 0.025; }, 16);
+                        setInterval(createConfettiSparkle, 60);
+                    }, 1500);
+                }
+            }, 20);
+        }
+
+        function createConfettiSparkle() {
+            const spark = document.createElement('div');
+            spark.classList.add('sparkle');
+            const colors = ['#ef0107', '#ffffff', '#ffdf00', '#00f0ff'];
+            spark.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            spark.style.left = '50%';
+            spark.style.top = '50%';
+            
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 120 + Math.random() * 350;
+            spark.style.setProperty('--x', `${Math.cos(angle) * distance}px`);
+            spark.style.setProperty('--y', `${Math.sin(angle) * distance}px`);
+            
+            document.body.appendChild(spark);
+            setTimeout(() => spark.remove(), 1500);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        window.onload = init3D;
+    </script>
+</body>
+</html>
